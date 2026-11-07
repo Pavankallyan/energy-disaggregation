@@ -37,10 +37,15 @@ two-stage fix cut its energy error from 72% to 13.5%.
 
 ## Project structure
 ```
+├── .github/workflows/ci.yml   # py_compile + pytest on push/PR
 ├── src/
 │   ├── generate_data.py   # synthetic meter + appliance ground truth
 │   ├── disaggregate.py    # per-appliance models (regression + washer event detection)
 │   └── evaluate.py        # metrics vs baseline + sample-day plot
+├── tests/
+│   ├── conftest.py
+│   ├── test_disaggregate.py   # feature engineering, train/test split, event detection
+│   └── test_evaluate.py       # per-appliance metrics (MAE/RMSE/energy error)
 ├── requirements.txt
 └── README.md
 ```
@@ -53,6 +58,15 @@ python src/generate_data.py   # data/energy.csv
 python src/disaggregate.py    # data/predictions.csv
 python src/evaluate.py        # metrics + figures/sample_day.png
 ```
+
+## Tests and CI
+```bash
+python -m pytest tests/ -q   # 21 tests: feature engineering, train/test
+                             # split, washer event detection, and the
+                             # per-appliance metrics in evaluate.py
+```
+GitHub Actions runs the same suite on every push and pull request
+(Python 3.11).
 
 ## Design decisions
 - **Why per-appliance models instead of one multi-output model:** appliances

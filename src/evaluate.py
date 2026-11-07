@@ -23,6 +23,26 @@ DATA_DIR = os.path.join(ROOT, "data")
 FIG_DIR = os.path.join(ROOT, "figures")
 
 
+def appliance_metrics(true, pred, base):
+    """Per-appliance error metrics for one true/predicted/baseline series.
+
+    Returns a dict with:
+    - mae: mean absolute error of the model
+    - base_mae: mean absolute error of the mean-predicting baseline
+    - rmse: root mean squared error of the model
+    - energy_err: |sum(pred) - sum(true)| / sum(true) — billing accuracy
+    """
+    true = np.asarray(true, dtype=float)
+    pred = np.asarray(pred, dtype=float)
+    base = np.asarray(base, dtype=float)
+    return {
+        "mae": float(np.mean(np.abs(true - pred))),
+        "base_mae": float(np.mean(np.abs(true - base))),
+        "rmse": float(np.sqrt(np.mean((true - pred) ** 2))),
+        "energy_err": float(abs(pred.sum() - true.sum()) / (true.sum() + 1e-9)),
+    }
+
+
 def main():
     preds = pd.read_csv(os.path.join(DATA_DIR, "predictions.csv"))
     preds["timestamp"] = pd.to_datetime(preds["timestamp"])
@@ -30,15 +50,10 @@ def main():
     print(f"{'appliance':10s} {'MAE':>8s} {'base MAE':>9s} {'RMSE':>8s} "
           f"{'energy err':>10s}")
     for app in APPLIANCES:
-        true = preds[app].to_numpy()
-        pred = preds[f"{app}_pred"].to_numpy()
-        base = preds[f"{app}_base"].to_numpy()
-        mae = float(np.mean(np.abs(true - pred)))
-        base_mae = float(np.mean(np.abs(true - base)))
-        rmse = float(np.sqrt(np.mean((true - pred) ** 2)))
-        energy_err = abs(pred.sum() - true.sum()) / (true.sum() + 1e-9)
-        print(f"{app[:-2]:10s} {mae:8.1f} {base_mae:9.1f} {rmse:8.1f} "
-              f"{energy_err:9.1%}")
+        m = appliance_metrics(preds[app], preds[f"{app}_pred"],
+                              preds[f"{app}_base"])
+        print(f"{app[:-2]:10s} {m['mae']:8.1f} {m['base_mae']:9.1f} "
+              f"{m['rmse']:8.1f} {m['energy_err']:9.1%}")
 
     # plot the first test day
     day = preds["timestamp"].dt.date.min()
